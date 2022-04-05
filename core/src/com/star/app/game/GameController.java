@@ -18,6 +18,7 @@ public class GameController {
     private PowerUpsController powerUpsController;
     private InfoController infoController;
     private BotController botController;
+    private BossController bossController;
     private Hero hero;
     private Vector2 tempVec;
     private Stage stage;
@@ -45,6 +46,10 @@ public class GameController {
 
     public BotController getBotController() {
         return botController;
+    }
+
+    public BossController getBossController() {
+        return bossController;
     }
 
     public InfoController getInfoController() {
@@ -83,6 +88,7 @@ public class GameController {
         this.powerUpsController = new PowerUpsController(this);
         this.infoController = new InfoController();
         this.botController = new BotController(this);
+        this.bossController = new BossController(this);
         this.hero = new Hero(this);
         this.tempVec = new Vector2();
         this.stage = new Stage(ScreenManager.getInstance().getViewport(), batch);
@@ -119,15 +125,20 @@ public class GameController {
         powerUpsController.update(dt);
         infoController.update(dt);
         botController.update(dt);
+        bossController.update(dt);
         hero.update(dt);
         stage.act(dt);
         checkCollisions();
         if (!hero.isAlive()) {
             ScreenManager.getInstance().changeScreen(ScreenManager.ScreenType.GAMEOVER, hero);
         }
-        if (asteroidController.getActiveList().size() == 0) {
+        if (asteroidController.getActiveList().size() == 0 && bossController.getActiveList().size() == 0) {
             level++;
-            generateBigAsteroids(level + 2);
+            if (level / 3 == 0){
+                bossController.setup(1000, 400);
+            } else {
+                generateBigAsteroids(level + 2);
+            }
             timer = 0;
         }
     }
@@ -234,6 +245,15 @@ public class GameController {
                     Bot bot = botController.getActiveList().get(j);
                     if (bot.getHitArea().contains(b.getPosition())) {
                         bot.takeDamage(b.getOwner().getCurrentWeapon().getDamage());
+                        b.deactivate();
+                    }
+                }
+            }
+            if (b.getOwner().getOwnerType() == OwnerType.BOSS) {
+                for (int j = 0; j < bossController.getActiveList().size(); j++) {
+                    Boss boss = bossController.getActiveList().get(j);
+                    if (boss.getHitArea().contains(b.getPosition())) {
+                        boss.takeDamage(b.getOwner().getCurrentWeapon().getDamage());
                         b.deactivate();
                     }
                 }
