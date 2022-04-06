@@ -19,6 +19,7 @@ public class BossController extends ObjectPool<Boss> {
         for (int i = 0; i < activeList.size(); i++) {
             Boss b = activeList.get(i);
             b.render(batch);
+            b.renderBossHealth(batch);
         }
     }
 

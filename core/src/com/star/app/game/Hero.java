@@ -140,6 +140,7 @@ public class Hero extends Ship {
         sb.append("BULLETS: ").append(currentWeapon.getCurBullets()).append("/").append(currentWeapon.getMaxBullets()).append("\n");
         sb.append("MONEY: ").append(money).append("\n");
         sb.append("MAGNETIC: ").append((int) magneticField.radius).append("\n");
+        sb.append("LEVEL: ").append(gc.getLevel()).append("\n");
         sb.append("TIMER: ").append((int) gc.getTimer()).append("\n");
         font.draw(batch, sb, 20, 700);
     }

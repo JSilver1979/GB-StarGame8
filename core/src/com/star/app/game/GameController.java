@@ -102,6 +102,7 @@ public class GameController {
         this.music = Assets.getInstance().getAssetManager().get("audio/mortal.mp3");
         this.music.setLooping(true);
         this.music.play();
+        this.music.setVolume(0.5f);
 
     }
 
@@ -134,7 +135,7 @@ public class GameController {
         }
         if (asteroidController.getActiveList().size() == 0 && bossController.getActiveList().size() == 0) {
             level++;
-            if (level / 3 == 0){
+            if (level % 2 == 0){
                 bossController.setup(1000, 400);
             } else {
                 generateBigAsteroids(level + 2);
@@ -188,6 +189,28 @@ public class GameController {
                 }
             }
         }
+        //столкновение ботов и босса
+        for (int i = 0; i < botController.getActiveList().size(); i++) {
+            Bot bot = botController.getActiveList().get(i);
+            for (int j = 0; j < bossController.getActiveList().size(); j++) {
+                Boss boss = bossController.getActiveList().get(j);
+
+                if (bot.getHitArea().overlaps(boss.getHitArea())) {
+                    float dst = boss.getPosition().dst(bot.getPosition());
+                    float halfOverLen = (boss.getHitArea().radius + bot.getHitArea().radius - dst) / 2.0f;
+                    tempVec.set(bot.getPosition()).sub(boss.getPosition()).nor();
+                    bot.getPosition().mulAdd(tempVec, halfOverLen);
+                    boss.getPosition().mulAdd(tempVec, -halfOverLen);
+
+                    float sumScl = bot.getHitArea().radius * 2 + boss.getHitArea().radius;
+                    bot.getVelocity().mulAdd(tempVec, 200.0f * boss.getHitArea().radius / sumScl);
+                    boss.getVelocity().mulAdd(tempVec, -200.0f * bot.getHitArea().radius / sumScl);
+
+                    boss.takeDamage(1);
+                    bot.takeDamage(1);
+                }
+            }
+        }
 
         //столкновение пуль и астероидов
         for (int i = 0; i < bulletController.getActiveList().size(); i++) {
@@ -233,7 +256,7 @@ public class GameController {
         for (int i = 0; i < bulletController.getActiveList().size(); i++) {
             Bullet b = bulletController.getActiveList().get(i);
 
-            if (b.getOwner().getOwnerType() == OwnerType.BOT) {
+            if (b.getOwner().getOwnerType() == OwnerType.BOT || b.getOwner().getOwnerType() == OwnerType.BOSS) {
                 if (hero.getHitArea().contains(b.getPosition())) {
                     hero.takeDamage(b.getOwner().getCurrentWeapon().getDamage());
                     b.deactivate();
@@ -248,8 +271,6 @@ public class GameController {
                         b.deactivate();
                     }
                 }
-            }
-            if (b.getOwner().getOwnerType() == OwnerType.BOSS) {
                 for (int j = 0; j < bossController.getActiveList().size(); j++) {
                     Boss boss = bossController.getActiveList().get(j);
                     if (boss.getHitArea().contains(b.getPosition())) {
