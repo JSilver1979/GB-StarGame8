@@ -18,6 +18,7 @@ public class GameController {
     private PowerUpsController powerUpsController;
     private InfoController infoController;
     private BotController botController;
+    private BossController bossController;
     private Hero hero;
     private Vector2 tempVec;
     private Stage stage;
@@ -45,6 +46,10 @@ public class GameController {
 
     public BotController getBotController() {
         return botController;
+    }
+
+    public BossController getBossController() {
+        return bossController;
     }
 
     public InfoController getInfoController() {
@@ -83,6 +88,7 @@ public class GameController {
         this.powerUpsController = new PowerUpsController(this);
         this.infoController = new InfoController();
         this.botController = new BotController(this);
+        this.bossController = new BossController(this);
         this.hero = new Hero(this);
         this.tempVec = new Vector2();
         this.stage = new Stage(ScreenManager.getInstance().getViewport(), batch);
@@ -96,6 +102,7 @@ public class GameController {
         this.music = Assets.getInstance().getAssetManager().get("audio/mortal.mp3");
         this.music.setLooping(true);
         this.music.play();
+        this.music.setVolume(0.5f);
 
     }
 
@@ -119,15 +126,20 @@ public class GameController {
         powerUpsController.update(dt);
         infoController.update(dt);
         botController.update(dt);
+        bossController.update(dt);
         hero.update(dt);
         stage.act(dt);
         checkCollisions();
         if (!hero.isAlive()) {
             ScreenManager.getInstance().changeScreen(ScreenManager.ScreenType.GAMEOVER, hero);
         }
-        if (asteroidController.getActiveList().size() == 0) {
+        if (asteroidController.getActiveList().size() == 0 && bossController.getActiveList().size() == 0) {
             level++;
-            generateBigAsteroids(level + 2);
+            if (level % 2 == 0){
+                bossController.setup(1000, 400);
+            } else {
+                generateBigAsteroids(level + 2);
+            }
             timer = 0;
         }
     }
@@ -177,6 +189,28 @@ public class GameController {
                 }
             }
         }
+        //столкновение ботов и босса
+        for (int i = 0; i < botController.getActiveList().size(); i++) {
+            Bot bot = botController.getActiveList().get(i);
+            for (int j = 0; j < bossController.getActiveList().size(); j++) {
+                Boss boss = bossController.getActiveList().get(j);
+
+                if (bot.getHitArea().overlaps(boss.getHitArea())) {
+                    float dst = boss.getPosition().dst(bot.getPosition());
+                    float halfOverLen = (boss.getHitArea().radius + bot.getHitArea().radius - dst) / 2.0f;
+                    tempVec.set(bot.getPosition()).sub(boss.getPosition()).nor();
+                    bot.getPosition().mulAdd(tempVec, halfOverLen);
+                    boss.getPosition().mulAdd(tempVec, -halfOverLen);
+
+                    float sumScl = bot.getHitArea().radius * 2 + boss.getHitArea().radius;
+                    bot.getVelocity().mulAdd(tempVec, 200.0f * boss.getHitArea().radius / sumScl);
+                    boss.getVelocity().mulAdd(tempVec, -200.0f * bot.getHitArea().radius / sumScl);
+
+                    boss.takeDamage(1);
+                    bot.takeDamage(1);
+                }
+            }
+        }
 
         //столкновение пуль и астероидов
         for (int i = 0; i < bulletController.getActiveList().size(); i++) {
@@ -222,7 +256,7 @@ public class GameController {
         for (int i = 0; i < bulletController.getActiveList().size(); i++) {
             Bullet b = bulletController.getActiveList().get(i);
 
-            if (b.getOwner().getOwnerType() == OwnerType.BOT) {
+            if (b.getOwner().getOwnerType() == OwnerType.BOT || b.getOwner().getOwnerType() == OwnerType.BOSS) {
                 if (hero.getHitArea().contains(b.getPosition())) {
                     hero.takeDamage(b.getOwner().getCurrentWeapon().getDamage());
                     b.deactivate();
@@ -234,6 +268,13 @@ public class GameController {
                     Bot bot = botController.getActiveList().get(j);
                     if (bot.getHitArea().contains(b.getPosition())) {
                         bot.takeDamage(b.getOwner().getCurrentWeapon().getDamage());
+                        b.deactivate();
+                    }
+                }
+                for (int j = 0; j < bossController.getActiveList().size(); j++) {
+                    Boss boss = bossController.getActiveList().get(j);
+                    if (boss.getHitArea().contains(b.getPosition())) {
+                        boss.takeDamage(b.getOwner().getCurrentWeapon().getDamage());
                         b.deactivate();
                     }
                 }
